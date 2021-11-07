@@ -1,5 +1,5 @@
 # MyTLAB
-A big hw of Basic Programming at THU. I am assigned with Part 2.
+A big hw of Basic Programming in Year 1. I am assigned with Part 2.
 
 ## Something random
 
