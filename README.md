@@ -14,6 +14,10 @@ However, I copied code from the Internet(details below) to make up some of Part 
 
 The three parts are totally NOT equal. My part is the most troublesome.
 
+## Examples
+
+![](./chart_bar.bmp) ![](./chart_line.bmp) ![](./chart_scatter.bmp)
+
 ## How to use
 
 1. Clone this repo. `BMPFILE.h, cbmp.c/h, main.c, matrix.c/h, painter.c/h, ref24.bmp` are core files.
