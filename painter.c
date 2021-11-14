@@ -36,11 +36,11 @@ void mixColor(unsigned char * orig, unsigned char col) {
 }
 void setColorRGB(Canvas *c, int px, int py, unsigned char R, unsigned char G, unsigned char B, double faderate) {
   if (faderate < 1) {
-    // printf("orig = %d %d %d, rate = %.3lf\n", (int)R, (int)G, (int)B, faderate);
+    // eprintf("orig = %d %d %d, rate = %.3lf\n", (int)R, (int)G, (int)B, faderate);
     R = 0xFF ^ (unsigned char)((0xFF ^ R) * faderate);
     G = 0xFF ^ (unsigned char)((0xFF ^ G) * faderate);
     B = 0xFF ^ (unsigned char)((0xFF ^ B) * faderate);
-    // printf("newo = %d %d %d\n", (int)R, (int)G, (int)B);
+    // eprintf("newo = %d %d %d\n", (int)R, (int)G, (int)B);
   }
   // Caution: BMP prefers BGR in that order
   mixColor(getCol(c, px, py)    , B);
@@ -79,7 +79,7 @@ void drawLineProto(Canvas * c, double sx, double sy, double tx, double ty, int c
         setColor(c, px, py, col, 1);
       } else if (h < dist2) {
         double faderate = (h - dist2) / (dist1 - dist2);
-        // printf("%lf %lf %lf %lf\n", h, dist1, dist2, faderate);
+        // eprintf("%lf %lf %lf %lf\n", h, dist1, dist2, faderate);
         setColor(c, px, py, col, faderate);
       }
     }
@@ -93,12 +93,13 @@ void drawDataLineProto(Canvas * c, double sx, double sy, double tx, double ty, i
   sy = (sy - c->minY) * c->ratioY + c->startY;
   ty = (ty - c->minY) * c->ratioY + c->startY;
   drawLineProto(c, sx, sy, tx, ty, col, dist1, dist2, 1);
-  // fprintf(stderr, "drawing %lf %lf %lf %lf in col %d %lf %lf\n", sx, sy, tx, ty, col, dist1, dist2);
+  // eprintf("drawing %lf %lf %lf %lf in col %d %lf %lf\n", sx, sy, tx, ty, col, dist1, dist2);
 }
 void drawDataLine(Canvas * c, double sx, double sy, double tx, double ty, int col, double dist) {
   drawDataLineProto(c, sx, sy, tx, ty, col, dist, dist);
 }
 void drawDataLineSmooth(Canvas * c, double sx, double sy, double tx, double ty, int col, double dist) {
+  // antialiasing
   drawDataLineProto(c, sx, sy, tx, ty, col, dist * 0.7, dist * 1.5);
 }
 // in cartesian coordinates
@@ -226,7 +227,7 @@ void drawBarChart(Canvas * c, Matrix * x, Matrix * y, int color) {
 
 
 void applyNumber(Canvas *c, int px, int py, int ew, int eh, int value) {
-  BMP* bmp = bopen("D:/project/MyTLAB/ref24.bmp");
+  BMP* bmp = bopen("./ref24.bmp");
   
   int width = get_width(bmp);
   int height = get_height(bmp);
@@ -252,7 +253,7 @@ void applyNumber(Canvas *c, int px, int py, int ew, int eh, int value) {
       }
     }
   }
-  for (int i = 1; i < SIGMA - 1; ++i) printf("[%d, %d] ", begin[i], end[i]);
+  for (int i = 1; i < SIGMA - 1; ++i) eprintf("[%d, %d] ", begin[i], end[i]);
   
 
   int s[100];
@@ -272,9 +273,9 @@ void applyNumber(Canvas *c, int px, int py, int ew, int eh, int value) {
     s[0] = 2;
     ++len;
   }
-  printf("s:");
-  for (int i = 0; i < len; ++i) printf(" %d", s[i]);
-  printf("\n");
+  eprintf("s:");
+  for (int i = 0; i < len; ++i) eprintf(" %d", s[i]);
+  eprintf("\n");
 
   int aw = 0;
   int ah = height;
@@ -282,20 +283,47 @@ void applyNumber(Canvas *c, int px, int py, int ew, int eh, int value) {
   double scale = fmin((double)ew / aw, (double)eh / ah);
   int sx = px - scale * aw / 2;
   int sy = py - scale * ah / 2;
-  printf("ew, eh: %d %d, aw, ah: %d %d, sx, sy: %d %d\n", ew, eh, aw, ah, sx, sy);
-  printf("scale = %lf\n", scale);
+  eprintf("ew, eh: %d %d, aw, ah: %d %d, sx, sy: %d %d\n", ew, eh, aw, ah, sx, sy);
+  eprintf("scale = %lf\n", scale);
 
-  int offsetx = 0;
+  int i = 0, offsetx = 0;
+  for (int tarx = sx; tarx <= sx + aw * scale; ++tarx) if (0 <= tarx && tarx < c->width) {
+    while ((tarx - sx) / scale - offsetx > end[s[i]] - begin[s[i]]) {
+      eprintf("tar = %d, convert = %d\n", tar, (int)((tarx - sx) / scale - offsetx));
+      offsetx += end[s[i]] - begin[s[i]], ++i;
+    }
+    for (int tary = sy; tary <= sy + ah * scale; ++tary) if (0 <= tary && tary < c->height) {
+      int x = (tarx - sx) / scale - offsetx + begin[s[i]];
+      int y = (tary - sy) / scale;
+      if (!(5 < y && y < height - 5)) continue;
+      unsigned char r, g, b;
+      const int dx[] = {0, -1, -1, -1, 0, 1, 1, 1, 0};
+      const int dy[] = {0, -1, 0, 1, 1, 1, 0, -1, -1};
+      const int wt[] = {10, 1, 2, 1, 2, 1, 2, 1, 2};
+      // antialiasing
+      int num = 0;
+      for (int j = 0; j < 9; ++j) {
+        get_pixel_rgb(bmp, x + dx[j], y + dy[j], &r, &g, &b);
+        num += wt[j] * ((int)r + g + b);
+      }
+      r = g = b = num / (22 * 3);
+      if (5 < y && y < height - 5) setColor(c, tarx, tary, r << 16 | g << 8 | b, 1);
+      // CAUTION: danger
+    }
+  }
+  return;
+  /*
+  // int offsetx = 0;
   for (int i = 0; i < len; ++i) {
     // lets fill the characters
-    printf("digit %d in [%d, %d)\n", s[i], begin[s[i]], end[s[i]]);
+    eprintf("digit %d in [%d, %d)\n", s[i], begin[s[i]], end[s[i]]);
     for (int x = begin[s[i]]; x < end[s[i]]; ++x) {
       for (int y = 0; y < height; ++y) {
         unsigned char r, g, b;
         get_pixel_rgb(bmp, x, y, &r, &g, &b);
         int tarx = sx + (x - begin[s[i]] + offsetx) * scale;
         int tary = sy + y * scale;
-        if (x == begin[s[i]] && y == 0) printf("%dth gets %d %d\n", i, tarx, tary);
+        if (x == begin[s[i]] && y == 0) eprintf("%dth gets %d %d\n", i, tarx, tary);
         if (0 <= tarx && tarx < c->width && 0 <= tary && tary < c->height) {
           setColor(c, tarx, tary, r << 16 | g << 8 | b, 1);
         }
@@ -303,6 +331,7 @@ void applyNumber(Canvas *c, int px, int py, int ew, int eh, int value) {
     }
     offsetx += end[s[i]] - begin[s[i]];
   }
+  */
 }
 
 #undef eprintf
