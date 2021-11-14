@@ -3,6 +3,13 @@
 #include <string.h>
 #include <math.h>
 #include "matrix.h"
+#include "lib/cbmp.c"
+
+#ifdef DEBUG
+#define eprintf(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define eprintf(...) do {} while(0)
+#endif
 
 #define LINE_WIDTH 2
 #define SPIKE_LENGTH 20 
@@ -160,24 +167,27 @@ Canvas * createCanvas(
     drawGridLine(c, tx, sy, tx, ty, 0x000000, LINE_WIDTH);
     return c;
   }
+void applyNumber(Canvas*, int, int, int, int, int);
 void drawAxis(Canvas * c, int gridX, int gridY, int color) {
   // draw spikes & gridlines
-  for (int x = (c->minX / gridX - 2) * gridX; x <= c->maxX; x += gridX) {
+  for (int x = (c->minX / gridX - 2) * gridX; x <= c->maxX; x += gridX) if (c->minX <= x) {
     drawDataLine(c, x, c->minY, x, c->minY + SPIKE_LENGTH / c->ratioY, 0x00000, LINE_WIDTH);
     drawDataLine(c, x, c->maxY, x, c->maxY - SPIKE_LENGTH / c->ratioY, 0x00000, LINE_WIDTH);
     drawDataLine(c, x, c->minY, x, c->maxY, color, LINE_WIDTH);
+    applyNumber(c, (x - c->minX) * c->ratioX + c->startX, c->startY / 2, gridX * c->ratioX * 0.8, c->startY * 0.8, x);
   }
-  for (int y = (c->minY / gridY - 2) * gridY; y <= c->maxY; y += gridY) {
+  for (int y = (c->minY / gridY - 2) * gridY; y <= c->maxY; y += gridY) if (c->minY <= y) {
     drawDataLine(c, c->minX, y, c->minX + SPIKE_LENGTH / c->ratioX, y, 0x00000, LINE_WIDTH);
     drawDataLine(c, c->maxX, y, c->maxX - SPIKE_LENGTH / c->ratioX, y, 0x00000, LINE_WIDTH);
     drawDataLine(c, c->minX, y, c->maxX, y, color, LINE_WIDTH);
+    applyNumber(c, c->startX / 2, (y - c->minY) * c->ratioY + c->startY, c->startX * 0.8, gridY * c->ratioY * 0.8, y);
   }
 }
 void drawLineChart(Canvas * c, Matrix * x, Matrix * y, int color) {
   assert(x->row == 1 && y->row == 1);
   assert(x->col == y->col);
   for (int i = 0; i + 1 < x->col; ++i) {
-    drawDataLine(c, x->data[0][i], y->data[0][i], x->data[0][i + 1], y->data[0][i + 1], color, LINE_WIDTH);
+    drawDataLineSmooth(c, x->data[0][i], y->data[0][i], x->data[0][i + 1], y->data[0][i + 1], color, LINE_WIDTH);
   }
 }
 void drawScatterChart(Canvas * c, Matrix * x, Matrix * y, int color) {
@@ -205,12 +215,95 @@ void drawBarChart(Canvas * c, Matrix * x, Matrix * y, int color) {
   int n = x->col;
   assert(n >= 2); // i just like it huh
   // ensuring the x's are evenly spaced
-  int apart = round(x->data[0][1]) - round(x->data[0][0]);
+  double apart = round(x->data[0][1]) - round(x->data[0][0]);
   assert(!roughlysame(apart, 0));
   for (int i = 0; i + 1 < n; ++i) assert(roughlysame(round(x->data[0][i + 1]) - round(x->data[0][i]), apart));
   for (int i = 0; i < n; ++i) {
     double px = x->data[0][i], py = y->data[0][i];
-    drawRect(c, px - apart * 0.4, 0, px + apart * 0.4, py, color);
+    drawRect(c, px - apart * 0.4, 0, px + apart * 0.4, py, color); // 80% width as instructed
   }
 }
+
+
+void applyNumber(Canvas *c, int px, int py, int ew, int eh, int value) {
+  BMP* bmp = bopen("D:/project/MyTLAB/ref24.bmp");
+  
+  int width = get_width(bmp);
+  int height = get_height(bmp);
+
+  const int SIGMA = 12 + 2;
+  int begin[SIGMA], end[SIGMA];
+  // seq 1010101
+  // seek for the zero segments
+  // [begin, end)
+  int stage = 0;
+  for (int x = 0; x < width; ++x) {
+    unsigned char r, g, b;
+    get_pixel_rgb(bmp, x, 1, &r, &g, &b);
+    if (r == 0xFF && g == 0xFF && b == 0xFF) {
+      if (stage % 2 == 1) {
+        ++stage;
+        begin[stage / 2] = x;
+      }
+    } else {
+      if (stage % 2 == 0) {
+        end[stage / 2] = x;
+        ++stage;
+      }
+    }
+  }
+  for (int i = 1; i < SIGMA - 1; ++i) printf("[%d, %d] ", begin[i], end[i]);
+  
+
+  int s[100];
+  int len = 0, neg = 0;
+  if (value < 0) value = -value, neg = 1;
+  do {
+    s[len++] = value % 10;
+    value /= 10;
+  } while (value);
+  for (int i = 0, j = len - 1; i < j; ++i, --j) {
+    int t = s[i]; s[i] = s[j]; s[j] = t;
+  }
+  //.-+0123456789
+  for (int i = 0; i < len; ++i) s[i] += 4;
+  if (neg) {
+    for (int i = len; i >= 1; --i) s[i] = s[i - 1];
+    s[0] = 2;
+    ++len;
+  }
+  printf("s:");
+  for (int i = 0; i < len; ++i) printf(" %d", s[i]);
+  printf("\n");
+
+  int aw = 0;
+  int ah = height;
+  for (int i = 0; i < len; ++i) aw += end[s[i]] - begin[s[i]];
+  double scale = fmin((double)ew / aw, (double)eh / ah);
+  int sx = px - scale * aw / 2;
+  int sy = py - scale * ah / 2;
+  printf("ew, eh: %d %d, aw, ah: %d %d, sx, sy: %d %d\n", ew, eh, aw, ah, sx, sy);
+  printf("scale = %lf\n", scale);
+
+  int offsetx = 0;
+  for (int i = 0; i < len; ++i) {
+    // lets fill the characters
+    printf("digit %d in [%d, %d)\n", s[i], begin[s[i]], end[s[i]]);
+    for (int x = begin[s[i]]; x < end[s[i]]; ++x) {
+      for (int y = 0; y < height; ++y) {
+        unsigned char r, g, b;
+        get_pixel_rgb(bmp, x, y, &r, &g, &b);
+        int tarx = sx + (x - begin[s[i]] + offsetx) * scale;
+        int tary = sy + y * scale;
+        if (x == begin[s[i]] && y == 0) printf("%dth gets %d %d\n", i, tarx, tary);
+        if (0 <= tarx && tarx < c->width && 0 <= tary && tary < c->height) {
+          setColor(c, tarx, tary, r << 16 | g << 8 | b, 1);
+        }
+      }
+    }
+    offsetx += end[s[i]] - begin[s[i]];
+  }
+}
+
+#undef eprintf
 
