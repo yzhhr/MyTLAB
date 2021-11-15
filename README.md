@@ -5,6 +5,7 @@ A big hw of Basic Programming in Year 1. I am assigned with Part 2. Part 2 is co
 
 1. Antialiasing is implemented when drawing numbers and drawing lines.
 2. Bar charts support negative heights. In that case the bar is going downwards from zero.
+3. Easy build with bat files. Good structure.
 
 ## Something random
 
@@ -16,14 +17,13 @@ The three parts are totally NOT equal. My part is the most troublesome.
 
 ## Examples
 
-![](./chart_bar.bmp) ![](./chart_line.bmp) ![](./chart_scatter.bmp)
+![](./output/chart_bar.bmp) ![](./output/chart_line.bmp) ![](./output/chart_scatter.bmp)
 
 ## How to use
 
 1. Clone this repo. `BMPFILE.h, cbmp.c/h, main.c, matrix.c/h, painter.c/h, ref24.bmp` are core files.
-2. `gcc main.c -o main`
-3. `./main`
-4. Then you get the three images`chart_bar.bmp, chart_line.bmp, chart_scatter.bmp`.
+2. Under Windows with MinGW64, `clean` then `build` then `main`.
+3. Then you get the three images`chart_bar.bmp, chart_line.bmp, chart_scatter.bmp`.
 
 ## Opensource projects involved
 

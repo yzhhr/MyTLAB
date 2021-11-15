@@ -70,13 +70,13 @@ BMP* bopen(char* file_path)
     bmp->height = _get_height(bmp->file_byte_contents);
     bmp->depth = _get_depth(bmp->file_byte_contents);
 
-    printf("depth = %u %u %u\n", bmp->width, bmp->height, bmp->depth);
+    // printf("depth = %u %u %u\n", bmp->width, bmp->height, bmp->depth);
 
     if(!_validate_depth(bmp->depth))
     {
         
-        for (int i = 0; i < 50; ++i) printf("%02X ", bmp->file_byte_contents[i]);
-        printf("\n");
+        // for (int i = 0; i < 50; ++i) printf("%02X ", bmp->file_byte_contents[i]);
+        // printf("\n");
         _throw_error("Invalid file depth");
     }
 
