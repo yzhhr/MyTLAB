@@ -1,5 +1,8 @@
 # MyTLAB
-A big hw of Basic Programming in Year 1. I am assigned with Part 2. Part 2 is completed. The whole thing is not.
+
+Basic plotting using C++. A big hw of Basic Programming in Year 1. I am assigned with Part 2(basic plotting). Part 2 is completed. The whole thing is not.
+
+**upd 2021.12.21** It is pain to merge this project with other students. They dont know how to write C++ with headers and they preferred a project in ONE file. The merged work is done, but it will not be uploaded.
 
 ## Additional Features
 
@@ -17,7 +20,7 @@ The three parts are totally NOT equal. My part is the most troublesome.
 
 ## Examples
 
-![](./output/chart_bar.bmp) ![](./output/chart_line.bmp) ![](./output/chart_scatter.bmp)
+![sample of bar chart generated](./output/chart_bar.bmp) ![sample of line chart](./output/chart_line.bmp) ![sample of scattered chart](./output/chart_scatter.bmp)
 
 ## How to use
 
